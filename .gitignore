@@ -4,3 +4,5 @@ build/
 .env*
 *.db
 config.json
+config.*.json
+sse.bat
