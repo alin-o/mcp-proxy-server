@@ -48,15 +48,34 @@ async function runInteractiveClient() {
         },
     });
 
-    // Create a box for the right panel (tool details, parameters, results)
-    const rightPanel = blessed.box({
+    // Create a box for the right panel (tool details, parameters)
+    const detailsPanel = blessed.box({
         parent: screen,
         width: "70%",
-        height: "100%",
+        height: "70%", // Adjusted height
         left: "30%",
         top: 0,
         border: "line",
         label: " Details ",
+        scrollable: true,
+        alwaysScroll: true,
+        scrollbar: {
+            ch: " ",
+        },
+        style: {
+            fg: "white",
+        },
+    });
+
+    // Create a box for the results
+    const resultsBox = blessed.box({
+        parent: screen,
+        width: "70%",
+        height: "30%", // Remaining height
+        left: "30%",
+        top: "70%", // Positioned below detailsPanel
+        border: "line",
+        label: " Results ",
         scrollable: true,
         alwaysScroll: true,
         scrollbar: {
@@ -108,24 +127,38 @@ async function runInteractiveClient() {
             // Store all focusable elements for tab navigation
             const focusableElements: blessed.Widgets.BlessedElement[] = [toolList];
             let currentFocusIndex = 0;
+            let currentFormBox: blessed.Widgets.BoxElement | null = null; // Keep track of the current form box
 
             toolList.on('select', async (item: blessed.Widgets.ListElement, index: number) => {
                 const selectedToolName = item.content;
                 const selectedTool = toolMap.get(selectedToolName);
 
                 if (selectedTool) {
-                    rightPanel.setContent(''); // Clear previous content
+                    if (currentFormBox) {
+                        currentFormBox.destroy(); // Destroy the old form box
+                        currentFormBox = null;
+                    }
+                    resultsBox.setContent(''); // Clear previous results
+                    detailsPanel.setContent(''); // Clear previous content
 
                     const formBox = blessed.box({
-                        parent: rightPanel,
+                        parent: detailsPanel,
                         top: 0,
                         left: 0,
                         width: '100%',
-                        height: 'shrink',
-                        content: `Tool: ${selectedTool.name}\n\nDescription: ${selectedTool.description || 'No description provided.'}\n\nParameters:`, // Initial content
-                    });
+                        height: '100%', // Make it take full height of detailsPanel
+                        content: `Tool: ${selectedTool.name}
 
-                    let currentTop = 5; // Starting position for parameters
+Description: ${selectedTool.description || 'No description provided.'}`, // Initial content
+                        scrollable: true, // Make formBox scrollable
+                        alwaysScroll: true,
+                        scrollbar: {
+                            ch: ' ',
+                        },
+                    });
+                    currentFormBox = formBox; // Store the new form box
+
+                    let currentTop = 4; // Starting position for parameters, adjusted for new header
                     const inputBoxes: { [key: string]: blessed.Widgets.TextboxElement } = {};
                     const currentToolInputs: blessed.Widgets.TextboxElement[] = [];
 
@@ -151,7 +184,6 @@ async function runInteractiveClient() {
                                 width: '80%',
                                 inputOnFocus: true,
                                 censor: false, // Ensure text is not hidden
-                                border: 'line',
                                 style: {
                                     fg: 'yellow', // Changed to yellow for better contrast
                                     bg: 'blue',   // Changed background for better visibility
@@ -184,24 +216,6 @@ async function runInteractiveClient() {
                             focus: {
                                 bg: 'blue',
                             },
-                        },
-                    });
-
-                    const resultsBox = blessed.box({
-                        parent: rightPanel,
-                        top: currentTop + 3, // Position below the execute button
-                        left: 0,
-                        width: '100%',
-                        bottom: 0, // Extend to the bottom of the right panel
-                        border: 'line',
-                        label: ' Results ',
-                        scrollable: true,
-                        alwaysScroll: true,
-                        scrollbar: {
-                            ch: ' ',
-                        },
-                        style: {
-                            fg: 'white',
                         },
                     });
 
@@ -245,14 +259,12 @@ async function runInteractiveClient() {
             });
 
             // Global Tab Key Listener
-            screen.key(['tab', 'S-tab'], (ch: string, key: any) => {
+            screen.key(['C-n', 'C-p'], (ch: string, key: any) => {
                 if (focusableElements.length === 0) return;
 
-                if (key.shift) {
-                    // Shift+Tab (backwards)
+                if (key.name === 'p') { // Ctrl+P for previous
                     currentFocusIndex = (currentFocusIndex - 1 + focusableElements.length) % focusableElements.length;
-                } else {
-                    // Tab (forwards)
+                } else { // Ctrl+N for next
                     currentFocusIndex = (currentFocusIndex + 1) % focusableElements.length;
                 }
 
