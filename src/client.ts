@@ -22,6 +22,7 @@ const createClient = (server: ServerConfig): { client: Client | undefined, trans
         command: server.transport.command,
         args: server.transport.args,
         env: server.transport.env ? server.transport.env.reduce((o, v) => ({
+          ...o,
           [v]: process.env[v] || ''
         }), {}) : undefined
       });

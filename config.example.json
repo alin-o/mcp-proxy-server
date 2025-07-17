@@ -1,6 +1,13 @@
 {
   "servers": [
     {
+      "name": "puppeteer",
+      "transport": {
+        "type": "stdio",
+        "command": "./start_puppeteer.sh"
+      }
+    },
+    {
       "name": "Example Server 1",
       "transport": {
         "command": "/path/to/server1/build/index.js"

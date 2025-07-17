@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import * as eventsource from "eventsource";
 import blessed from "blessed";
+import * as fs from "fs";
 
 // Polyfill EventSource for the client-side
 if (typeof global !== 'undefined' && !global.EventSource) {
@@ -41,10 +42,16 @@ async function runInteractiveClient() {
         vi: true,
         mouse: true,
         style: {
-            fg: "white",
-            selected: {
-                bg: "blue",
+            fg: "white", // Default foreground for items
+            bg: "default", // Ensure the list background is default
+            item: { // Style for unselected items
+                fg: "white",
+                bg: "default",
             },
+            selected: { // Style for selected item when list is NOT focused
+                bg: "blue",
+                fg: "white",
+            }
         },
     });
 
@@ -122,11 +129,25 @@ async function runInteractiveClient() {
 
             toolList.setItems(toolNames);
             toolList.focus(); // Focus the tool list for keyboard navigation
+
+            toolList.on('keypress', (ch: string, key: any) => {
+                if (key.name === 'tab') {
+                    if (formFocusableElements.length > 0) {
+                        if (key.shift) {
+                            // Shift+Tab from toolList goes to the last form element (execute button)
+                            formFocusableElements[formFocusableElements.length - 1].focus();
+                        } else {
+                            // Tab from toolList goes to the first form element
+                            formFocusableElements[0].focus();
+                        }
+                        return false; // Prevent default tab behavior
+                    }
+                }
+            });
             screen.render();
 
             // Store all focusable elements for tab navigation
-            const focusableElements: blessed.Widgets.BlessedElement[] = [toolList];
-            let currentFocusIndex = 0;
+            let formFocusableElements: blessed.Widgets.BlessedElement[] = []; // Declare outside the select handler
             let currentFormBox: blessed.Widgets.BoxElement | null = null; // Keep track of the current form box
 
             toolList.on('select', async (item: blessed.Widgets.ListElement, index: number) => {
@@ -146,7 +167,7 @@ async function runInteractiveClient() {
                         top: 0,
                         left: 0,
                         width: '100%',
-                        height: '100%', // Make it take full height of detailsPanel
+                        height: 'shrink', // Changed to shrink
                         content: `Tool: ${selectedTool.name}
 
 Description: ${selectedTool.description || 'No description provided.'}`, // Initial content
@@ -182,16 +203,21 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                                 left: 2,
                                 height: 1,
                                 width: '80%',
-                                inputOnFocus: true,
+                                inputOnFocus: false, // Start with false
                                 censor: false, // Ensure text is not hidden
+                                mouse: true, // Enable mouse interaction
                                 style: {
-                                    fg: 'yellow', // Changed to yellow for better contrast
-                                    bg: 'blue',   // Changed background for better visibility
+                                    fg: 'white',
+                                    bg: 'blue',
                                     focus: {
-                                        bg: 'green', // Background color when focused
-                                        fg: 'black', // Text color when focused - changed to black for better visibility
+                                        bg: 'green',
+                                        fg: 'black',
                                     },
                                 },
+                            });
+
+                            input.on('focus', () => {
+                                input.readInput(); // Explicitly start reading input
                             });
                             inputBoxes[propName] = input;
                             currentToolInputs.push(input); // Add to current tool's inputs
@@ -204,72 +230,175 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                         parent: formBox,
                         top: currentTop + 1,
                         left: 2,
-                        width: 10,
+                        width: 12, // Increased width
                         height: 1,
                         content: ' Execute ',
                         align: 'center',
                         valign: 'middle',
-                        border: 'line',
+                        // border: 'line', // Removed border to match inputs
+                        mouse: true, // Enable mouse interaction
+                        keys: true, // Enable keyboard focus
                         style: {
-                            fg: 'white',
-                            bg: 'green',
+                            fg: 'yellow',
+                            bg: 'blue',
                             focus: {
-                                bg: 'blue',
+                                bg: 'green',
+                                fg: 'black',
                             },
                         },
                     });
 
-                    executeButton.on('press', async () => {
-                        resultsBox.setContent('Executing tool...');
-                        screen.render();
+                    const saveButton = blessed.button({
+                        parent: formBox,
+                        top: currentTop + 1,
+                        left: 16, // Position next to execute button
+                        width: 14,
+                        height: 1,
+                        content: ' Save Results ',
+                        align: 'center',
+                        valign: 'middle',
+                        mouse: true,
+                        keys: true,
+                        style: {
+                            fg: 'yellow',
+                            bg: 'blue',
+                            focus: {
+                                bg: 'green',
+                                fg: 'black',
+                            },
+                        },
+                    });
 
-                        const args: { [key: string]: any } = {};
-                        for (const propName in inputBoxes) {
-                            args[propName] = inputBoxes[propName].value;
-                        }
+                    // Collect all focusable elements in the form
+                    formFocusableElements = [...currentToolInputs, executeButton, saveButton]; // Assign to the outer-scoped variable
 
-                        try {
-                            const result = await client.callTool({
-                                name: selectedTool.name,
-                                arguments: args,
-                            });
+                    currentToolInputs.forEach((input, index) => {
+                        input.on('keypress', (ch: string, key: any) => {
+                            if (key.name === 'tab') {
+                                if (key.shift) {
+                                    // Shift+Tab (backwards)
+                                    const prevIndex = (index - 1 + formFocusableElements.length) % formFocusableElements.length;
+                                    formFocusableElements[prevIndex].focus();
+                                } else {
+                                    // Tab (forwards)
+                                    const nextIndex = (index + 1) % formFocusableElements.length;
+                                    formFocusableElements[nextIndex].focus();
+                                }
+                                return false; // Prevent default tab behavior
+                            } else if (key.name === 'enter') {
+                                const nextIndex = (index + 1) % formFocusableElements.length;
+                                formFocusableElements[nextIndex].focus();
+                                return false; // Prevent default enter behavior
+                            }
+                        });
+                    });
 
-                            resultsBox.setContent(`Tool Execution Result:\n${JSON.stringify(result, null, 2)}`);
-                        } catch (error) {
-                            resultsBox.setContent(`Tool Execution Error:\n${(error as Error).message}`);
-                        } finally {
-                            screen.render();
+                    executeButton.on('keypress', (ch: string, key: any) => {
+                        if (key.name === 'tab') {
+                            const currentIndex = formFocusableElements.indexOf(executeButton);
+                            if (key.shift) {
+                                // Shift+Tab (backwards)
+                                const prevIndex = (currentIndex - 1 + formFocusableElements.length) % formFocusableElements.length;
+                                formFocusableElements[prevIndex].focus();
+                            } else {
+                                // Tab (forwards)
+                                // From execute button, go to save button
+                                const nextIndex = (currentIndex + 1) % formFocusableElements.length;
+                                formFocusableElements[nextIndex].focus();
+                            }
+                            return false; // Prevent default tab behavior
+                        } else if (key.name === 'enter') {
+                            // Pressing enter on the button should trigger its press event
+                            executeButton.emit('press');
+                            return false;
                         }
                     });
 
-                    // Update focusable elements and set initial focus
-                    focusableElements.length = 1; // Keep toolList
-                    focusableElements.push(...currentToolInputs);
-                    focusableElements.push(executeButton);
+                    saveButton.on('keypress', (ch: string, key: any) => {
+                        if (key.name === 'tab') {
+                            const currentIndex = formFocusableElements.indexOf(saveButton);
+                            if (key.shift) {
+                                // Shift+Tab (backwards)
+                                const prevIndex = (currentIndex - 1 + formFocusableElements.length) % formFocusableElements.length;
+                                formFocusableElements[prevIndex].focus();
+                            } else {
+                                // Tab (forwards)
+                                // From save button, go back to toolList
+                                toolList.focus();
+                            }
+                            return false; // Prevent default tab behavior
+                        } else if (key.name === 'enter') {
+                            // Pressing enter on the button should trigger its press event
+                            saveButton.emit('press');
+                            return false;
+                        }
+                    });
 
-                    if (currentToolInputs.length > 0) {
-                        currentToolInputs[0].focus();
-                    } else {
-                        executeButton.focus();
-                    }
-                    currentFocusIndex = 0; // Reset index to start from toolList for global tab
+                    executeButton.removeAllListeners('press');
+                    executeButton.on('press', async () => {
+                        const params: { [key: string]: any } = {};
+                        for (const propName in inputBoxes) {
+                            const input = inputBoxes[propName];
+                            const propSchema = selectedTool.inputSchema.properties[propName];
+                            let value: any = input.value;
+
+                            // Basic type parsing based on schema type
+                            if (propSchema.type === 'number') {
+                                value = parseFloat(value);
+                                if (isNaN(value)) {
+                                    resultsBox.setContent(`Error: Invalid number for ${propName}`);
+                                    screen.render();
+                                    return;
+                                }
+                            } else if (propSchema.type === 'boolean') {
+                                value = value.toLowerCase() === 'true';
+                            } else if (propSchema.type === 'object' || propSchema.type === 'array') {
+                                try {
+                                    value = JSON.parse(value);
+                                } catch (e) {
+                                    resultsBox.setContent(`Error: Invalid JSON for ${propName}`);
+                                    screen.render();
+                                    return;
+                                }
+                            }
+                            params[propName] = value;
+                        }
+
+                        resultsBox.setContent(`Executing tool: ${selectedTool.name}\nParameters: ${JSON.stringify(params, null, 2)}\n`);
+                        screen.render();
+
+                        try {
+                            const toolResult = await client.callTool({
+                                name: selectedTool.name,
+                                arguments: params,
+                            });
+                            resultsBox.setContent(resultsBox.getContent() + `Tool Result:\n${JSON.stringify(toolResult, null, 2)}\n`);
+                        } catch (error) {
+                            resultsBox.setContent(resultsBox.getContent() + `Tool execution error: ${(error as Error).message}\n`);
+                        }
+                        screen.render();
+                    });
+
+                    saveButton.removeAllListeners('press');
+                    saveButton.on('press', () => {
+                        const resultsContent = resultsBox.getContent();
+                        const filePath = 'mcp_results.txt';
+                        try {
+                            fs.writeFileSync(filePath, resultsContent);
+                            statusLine.setContent(`Results saved to ${filePath}`);
+                        } catch (error) {
+                            statusLine.setContent(`Error saving results: ${(error as Error).message}`);
+                        }
+                        screen.render();
+                    });
 
                     screen.render();
                 }
             });
 
-            // Global Tab Key Listener
-            screen.key(['C-n', 'C-p'], (ch: string, key: any) => {
-                if (focusableElements.length === 0) return;
-
-                if (key.name === 'p') { // Ctrl+P for previous
-                    currentFocusIndex = (currentFocusIndex - 1 + focusableElements.length) % focusableElements.length;
-                } else { // Ctrl+N for next
-                    currentFocusIndex = (currentFocusIndex + 1) % focusableElements.length;
-                }
-
-                focusableElements[currentFocusIndex].focus();
-                screen.render();
+            // Global Key Listener (for toolList and general navigation if needed)
+            screen.key(['C-c'], function (ch: string, key: any) {
+                return process.exit(0);
             });
         }
 
