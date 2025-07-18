@@ -95,9 +95,10 @@ export const createServer = async () => {
 
     try {
       console.log('Forwarding tool call:', name);
+      console.log('Tool call arguments:', JSON.stringify(args, null, 2));
 
       // Use the correct schema for tool calls
-      return await clientForTool.client.request(
+      const toolResult = await clientForTool.client.request(
         {
           method: 'tools/call',
           params: {
@@ -110,6 +111,8 @@ export const createServer = async () => {
         },
         CompatibilityCallToolResultSchema
       );
+      //console.log('Tool call result:', JSON.stringify(toolResult, null, 2));
+      return toolResult;
     } catch (error) {
       console.error(`Error calling tool through ${clientForTool.name}:`, error);
       throw error;

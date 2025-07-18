@@ -2,8 +2,10 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
 import { createServer } from "./mcp-proxy.js";
 import { verifyToken } from "./token-utils.js";
+import cors from "cors";
 
 const app = express();
+app.use(cors());
 
 const { server, cleanup } = await createServer();
 
@@ -51,7 +53,7 @@ app.get("/sse", authMiddleware, async (req, res) => {
   }
 
   server.onclose = async () => {
-    console.log('Server onclose')
+    console.log('Connection onclose')
     if (process.env.KEEP_SERVER_OPEN !== "1") {
       await cleanup();
       await server.close();
@@ -62,7 +64,8 @@ app.get("/sse", authMiddleware, async (req, res) => {
 
 app.post("/message", authMiddleware, async (req, res) => {
   console.log("Received message");
-  await transport.handlePostMessage(req, res);
+  if (transport)
+    await transport.handlePostMessage(req, res);
 });
 
 const PORT = process.env.PORT || 3006;
