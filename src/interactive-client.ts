@@ -455,6 +455,8 @@ async function runInteractiveClient() {
                     resultsBox.setContent(resultsBox.getContent() + `Tool Result:\n${JSON.stringify(toolResult, null, 2)}\n`);
                 } catch (error) {
                     resultsBox.setContent(resultsBox.getContent() + `Tool execution error: ${(error as Error).message}\n`);
+                    isConnected = false; // Set connection status to false
+                    connectAndPopulateTools(); // Attempt to reconnect
                 }
                 screen.render();
             });
