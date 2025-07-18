@@ -17,20 +17,29 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            max-width: 1200px; /* Increased max-width */
+            max-width: 1200px;
             margin: auto;
         }
         h1 {
             color: #0056b3;
         }
-        .tool-list {
+        .tool-list-container {
+            flex: 1;
             border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 15px;
             border-radius: 5px;
             background-color: #fafafa;
+            display: flex;
+            flex-direction: column;
             max-height: 50vh;
+        }
+        .tool-list-header {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tool-list-scrollable {
             overflow-y: auto;
+            flex-grow: 1;
+            padding: 0 15px;
         }
         .details-panel {
             border: 1px solid #ddd;
@@ -50,19 +59,19 @@
             max-height: 80vh;
             overflow-y: auto;
         }
-        .tool-list ul {
+        .tool-list-scrollable ul {
             list-style: none;
             padding: 0;
         }
-        .tool-list li {
+        .tool-list-scrollable li {
             padding: 8px 0;
             cursor: pointer;
             border-bottom: 1px solid #eee;
         }
-        .tool-list li:last-child {
+        .tool-list-scrollable li:last-child {
             border-bottom: none;
         }
-        .tool-list li.selected {
+        .tool-list-scrollable li.selected {
             background-color: #e0e0e0;
             font-weight: bold;
         }
@@ -71,6 +80,13 @@
             padding: 10px;
             margin-top: 5px;
             margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #toolSearchInput {
+            width: calc(100% - 30px);
+            margin-bottom: 10px;
+            padding: 8px;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
@@ -92,6 +108,7 @@
             padding: 10px;
             background-color: #e9ecef;
             border-radius: 4px;
+            margin-bottom: 10px;
         }
         pre {
             background-color: #eee;
@@ -100,6 +117,18 @@
             white-space: pre-wrap;
             word-wrap: break-word;
         }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #saveButton {
+            display: none; /* Hidden by default */
+        }
+        #executeButton {
+            display: none; /* Hidden by default */
+        }
     </style>
 </head>
 <body>
@@ -107,9 +136,14 @@
         <h1>MCP Browser Client</h1>
         <div class="status-message" id="statusMessage">Connecting...</div>
         <div style="display: flex;">
-            <div class="tool-list" style="flex: 1;">
-                <h2>Tools</h2>
-                <ul id="toolList"></ul>
+            <div class="tool-list-container">
+                <div class="tool-list-header">
+                    <h2>Tools</h2>
+                    <input type="text" id="toolSearchInput" placeholder="Search tools...">
+                </div>
+                <div class="tool-list-scrollable">
+                    <ul id="toolList"></ul>
+                </div>
             </div>
             <div style="flex: 2; margin-left: 20px;">
                 <div class="details-panel">
@@ -117,12 +151,14 @@
                     <div id="detailsContent">Select a tool to see details.</div>
                     <div id="toolForm"></div>
                     <button id="executeButton">Execute</button>
-                    <button id="saveButton">Save Results</button>
                 </div>
             </div>
         </div>
         <div class="results-box" style="margin-top: 20px;">
-            <h2>Results</h2>
+            <div class="results-header">
+                <h2>Results</h2>
+                <button id="saveButton">Save Results</button>
+            </div>
             <pre id="resultsContent"></pre>
         </div>
     </div>

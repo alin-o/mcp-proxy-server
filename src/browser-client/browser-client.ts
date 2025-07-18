@@ -8,64 +8,126 @@ const toolForm = document.getElementById("toolForm") as HTMLDivElement;
 const executeButton = document.getElementById("executeButton") as HTMLButtonElement;
 const saveButton = document.getElementById("saveButton") as HTMLButtonElement;
 const resultsContent = document.getElementById("resultsContent") as HTMLPreElement;
+const toolSearchInput = document.getElementById("toolSearchInput") as HTMLInputElement;
+
+const setExecuteButtonVisibility = (visible: boolean) => {
+    executeButton.style.display = visible ? 'inline-block' : 'none';
+};
+
+setExecuteButtonVisibility(false); // Initially hide the button
 
 let transport: SSEClientTransport;
 let client: Client;
 let toolMap = new Map<string, any>(); // Store full tool objects
+let allTools: any[] = []; // Store all tools for filtering
 let lastSelectedToolName: string | null = null;
 const toolInputValues = new Map<string, { [key: string]: any }>(); // Store input values for each tool
-const clientId = `browser-client-${Math.random().toString(36).substring(2, 15)}`; // Generate a unique client ID
+let clientId = `browser-client-${Math.random().toString(36).substring(2, 15)}`; // Generate a unique client ID
+
+const generateNewClientId = () => {
+    clientId = `browser-client-${Math.random().toString(36).substring(2, 15)}`;
+};
+
+const RECONNECT_INTERVAL_MS = 5000; // 5 seconds
+let reconnectAttemptTimer: number | null = null;
 
 const updateStatus = (message: string) => {
     statusMessage.textContent = message;
 };
 
+const attemptReconnect = () => {
+    setExecuteButtonVisibility(false);
+    toolForm.innerHTML = '';
+    if (reconnectAttemptTimer) {
+        clearTimeout(reconnectAttemptTimer);
+        reconnectAttemptTimer = null;
+    }
+    updateStatus(`Attempting to reconnect in ${RECONNECT_INTERVAL_MS / 1000} seconds...`);
+    reconnectAttemptTimer = setTimeout(connectAndPopulateTools, RECONNECT_INTERVAL_MS) as unknown as number;
+};
+
 const connectAndPopulateTools = async () => {
     console.log("Starting MCP Browser Client...");
+    updateStatus("Connecting to MCP proxy server...");
+
+    // Explicitly close the existing transport if it exists
+    if (transport) {
+        await transport.close();
+    }
+
+    // Generate a new client ID for each connection attempt
+    generateNewClientId();
+
+    // Always re-create transport and client instances
+    transport = new SSEClientTransport(new URL(`http://localhost:3006/sse?node_id=${clientId}`));
+    client = new Client(
+        {
+            name: "browser-client",
+            version: "1.0.0",
+            id: clientId, // Use the generated client ID as node.id
+        },
+        {
+            capabilities: {
+                tools: {},
+            },
+        },
+    );
+
+    transport.onerror = (error: Error) => {
+        console.error("SSE Transport error:", error);
+        updateStatus(`Connection lost.`);
+        attemptReconnect();
+    };
+
     try {
-        updateStatus("Connecting to MCP proxy server...");
-
-        transport = new SSEClientTransport(new URL(`http://localhost:3006/sse?node_id=${clientId}`));
-        client = new Client(
-            {
-                name: "browser-client",
-                version: "1.0.0",
-                id: clientId, // Use the generated client ID as node.id
-            },
-            {
-                capabilities: {
-                    tools: {},
-                },
-            },
-        );
-
         await client.connect(transport);
         updateStatus("Connected to MCP proxy server.");
+        console.log("Connected to MCP proxy server.");
 
-        transport.onerror = (error: Error) => {
-            console.error("SSE Transport error:", error);
-            updateStatus(`Connection lost.`);
-        };
+        if (reconnectAttemptTimer) {
+            clearTimeout(reconnectAttemptTimer);
+            reconnectAttemptTimer = null;
+        }
+
+        // Clear existing tools before populating
+        toolMap.clear();
+        allTools = [];
+        toolListElement.innerHTML = '';
 
         // Populate tool list
         const availableTools = await client.listTools({});
         if (availableTools.tools) {
-            toolMap.clear(); // Clear existing tools
-            toolListElement.innerHTML = ''; // Clear existing list items
-            availableTools.tools.forEach((tool: any) => {
-                toolMap.set(tool.name, tool);
-                const listItem = document.createElement('li');
-                listItem.textContent = tool.name;
-                listItem.dataset.toolName = tool.name; // Store tool name for easy access
-                listItem.addEventListener('click', () => selectTool(tool.name));
-                toolListElement.appendChild(listItem);
-            });
+            allTools = availableTools.tools; // Store all tools
+            filterTools(); // Populate initial list            
         }
     } catch (error) {
         updateStatus(`Connection error: ${(error as Error).message}.`);
         console.error("Client connection error:", error);
+        attemptReconnect();
     }
 };
+
+const filterTools = () => {
+    toolMap.clear();
+    toolListElement.innerHTML = '';
+    const searchTerm = toolSearchInput.value.toLowerCase();
+
+    const filteredTools = allTools.filter(tool =>
+        tool.name.toLowerCase().includes(searchTerm) ||
+        (tool.description && tool.description.toLowerCase().includes(searchTerm))
+    );
+
+    filteredTools.forEach((tool: any) => {
+        toolMap.set(tool.name, tool);
+        const listItem = document.createElement('li');
+        listItem.textContent = tool.name;
+        listItem.dataset.toolName = tool.name;
+        listItem.addEventListener('click', () => selectTool(tool.name));
+        toolListElement.appendChild(listItem);
+    });
+};
+
+toolSearchInput.addEventListener('keyup', filterTools);
 
 const selectTool = (toolName: string) => {
     // Save current input values before rendering new form
@@ -90,13 +152,17 @@ const selectTool = (toolName: string) => {
     if (selectedTool) {
         detailsContent.innerHTML = `Tool: <strong>${selectedTool.name}</strong><br><br>Description: ${selectedTool.description || 'No description provided.'}`;
         resultsContent.textContent = ''; // Clear previous results
+        saveButton.style.display = 'none'; // Hide save button
+
         renderToolForm(selectedTool);
+    } else {
+        setExecuteButtonVisibility(false); // Hide execute button if no tool is selected
     }
     lastSelectedToolName = toolName;
 };
 
 const renderToolForm = (tool: any) => {
-    toolForm.innerHTML = ''; // Clear previous form
+    toolForm.innerHTML = '';
     const savedValues = toolInputValues.get(tool.name) || {};
 
     if (tool.inputSchema && tool.inputSchema.properties) {
@@ -115,6 +181,9 @@ const renderToolForm = (tool: any) => {
             toolForm.appendChild(input);
         }
     }
+
+    setExecuteButtonVisibility(true);
+
 };
 
 executeButton.addEventListener('click', async () => {
@@ -165,6 +234,7 @@ executeButton.addEventListener('click', async () => {
     toolInputValues.set(selectedToolName, params);
 
     resultsContent.textContent = ''; // Clear previous results
+    saveButton.style.display = 'none'; // Hide save button before execution
     resultsContent.textContent = `Executing tool: ${selectedTool.name}\nParameters: ${JSON.stringify(params, null, 2)}\n`;
     updateStatus(`Executing ${selectedTool.name}...`);
 
@@ -175,15 +245,20 @@ executeButton.addEventListener('click', async () => {
         });
         resultsContent.textContent += `Tool Result:\n${JSON.stringify(toolResult, null, 2)}\n`;
         updateStatus(`Execution of ${selectedTool.name} complete.`);
+        if (resultsContent.textContent.trim() !== '') {
+            saveButton.style.display = 'inline-block'; // Show save button if results are available
+        }
     } catch (error) {
         const errorMessage = (error as Error).message;
         resultsContent.textContent += `Tool execution error: ${errorMessage}\n`;
         updateStatus(`Error executing ${selectedTool.name}.`);
         console.error("Tool execution error:", error);
-        // Check if the error is connection-related
+        // Reconnect immediately if connection error
         if (errorMessage.includes('fetch failed') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Request timed out')) {
-            // Reconnect immediately if connection error
             connectAndPopulateTools();
+        } else if (errorMessage.includes('No active transport')) {
+            console.error("RECONNECT: ", error);
+            attemptReconnect();
         }
     }
 });
