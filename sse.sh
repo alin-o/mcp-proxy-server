@@ -7,7 +7,7 @@ export PUPPETEER_ARGS='{"defaultViewport": {"width": 1400, "height": 1080}, "arg
 export SCREENSHOT_SAVE_PATH="/home/alin/ai-workspace/screenshots"
 export DISPLAY=:0
 # for local setup 
-xhost +local:
+#xhost +local:
 
-tsx build/sse
+tsx src/sse.ts
 # node build/generate-token.js -c test-client -e 1y

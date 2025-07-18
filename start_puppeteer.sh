@@ -7,5 +7,5 @@ export SCREENSHOT_SAVE_PATH="/home/alin/ai-workspace/screenshots"
 cd /home/alin/ai-workspace/mcp-configurable-puppeteer
 #npx -y github:alin-o/mcp-configurable-puppeteer
 #npx -y /home/alin/ai-workspace/mcp-configurable-puppeteer/dist/index.js
-#tsx index.ts
-node dist/index.js
+tsx index.ts
+#node dist/index.js
