@@ -50,7 +50,7 @@ async function runClient() {
         console.log("Taking screenshot...");
         const screenshotResult = await client.callTool({
             name: "puppeteer_screenshot",
-            arguments: { name: "test_page", width: 1400, height: 1080 },
+            arguments: { name: "test_page", selector: "body", width: 1400, height: 1080 },
         });
         console.log("Screenshot result:", screenshotResult);
 
