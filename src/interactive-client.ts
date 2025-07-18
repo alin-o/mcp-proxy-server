@@ -162,6 +162,13 @@ async function runInteractiveClient() {
             statusLine.setContent("Connected to MCP proxy server.");
             screen.render();
 
+            // Reset toolList styles and interaction options upon successful connection
+            toolList.style.fg = "white";
+            toolList.style.selected.bg = "blue";
+            toolList.style.selected.fg = "white";
+            toolList.options.keys = true;
+            (toolList as any).mouse = true;
+
             // Populate tool list
             const availableTools = await client.listTools({});
             if (availableTools.tools) {
@@ -174,16 +181,11 @@ async function runInteractiveClient() {
 
                 toolList.setItems(toolNames);
                 toolList.focus(); // Focus the tool list for keyboard navigation
-                toolList.options.keys = true; // Enable keyboard interaction
-                (toolList as any).mouse = true; // Enable mouse interaction
-                toolList.style.fg = "white"; // Reset foreground color
-                toolList.style.selected.bg = "blue"; // Reset selected background color
-                toolList.style.selected.fg = "white"; // Reset selected foreground color
             }
         } catch (error) {
             isConnected = false;
             statusLine.setContent(`Connection error: ${(error as Error).message}. Retrying in 5 seconds...`);
-            toolList.setItems([`{red-fg}Connection Error: Server not available.{/red-fg}`, `{red-fg}Retrying...{/red-fg}`]);
+            toolList.setItems([`Connection Error`]);
             toolList.style.fg = "red"; // Set foreground color to red for error message
             toolList.style.selected.bg = "red"; // Set selected background color to red
             toolList.style.selected.fg = "white"; // Set selected foreground color to white
@@ -454,9 +456,14 @@ async function runInteractiveClient() {
                     });
                     resultsBox.setContent(resultsBox.getContent() + `Tool Result:\n${JSON.stringify(toolResult, null, 2)}\n`);
                 } catch (error) {
-                    resultsBox.setContent(resultsBox.getContent() + `Tool execution error: ${(error as Error).message}\n`);
-                    isConnected = false; // Set connection status to false
-                    connectAndPopulateTools(); // Attempt to reconnect
+                    const errorMessage = (error as Error).message;
+                    console.error(`Tool execution error: ${errorMessage}`);
+                    resultsBox.setContent(resultsBox.getContent() + `Tool execution error: ${errorMessage}\n`);
+                    // Check if the error is connection-related
+                    if (errorMessage.includes('fetch failed') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ECONNREFUSED')) {
+                        isConnected = false; // Mark connection as potentially broken
+                        connectAndPopulateTools();
+                    }
                 }
                 screen.render();
             });
