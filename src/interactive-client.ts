@@ -55,6 +55,26 @@ async function runInteractiveClient() {
         },
     });
 
+    // Define the styles for selected item when focused and not focused
+    const selectedStyleUnfocused = {
+        bg: "blue",
+        fg: "white",
+    };
+    const selectedStyleFocused = {
+        bg: "green",
+        fg: "black",
+    };
+
+    toolList.on('focus', () => {
+        toolList.style.selected = selectedStyleFocused;
+        screen.render();
+    });
+
+    toolList.on('blur', () => {
+        toolList.style.selected = selectedStyleUnfocused;
+        screen.render();
+    });
+
     // Create a box for the right panel (tool details, parameters)
     const detailsPanel = blessed.box({
         parent: screen,
