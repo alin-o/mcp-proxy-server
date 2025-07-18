@@ -123,6 +123,18 @@ async function runInteractiveClient() {
     screen.program.key(["C-c"], function (ch: string, key: any) {
         return process.exit(0);
     });
+    screen.program.key(["C-x"], function (ch: string, key: any) {
+        return process.exit(0);
+    });
+
+    screen.key(['escape'], function(ch: string, key: any) {
+        // If an input is focused, cancel it
+        if (screen.focused && (screen.focused as any).cancel) {
+            (screen.focused as any).cancel();
+            screen.focused.emit('blur'); // Manually emit blur to trigger blur logic
+            screen.render();
+        }
+    });
 
     let isConnected = false;
     let reconnectInterval: NodeJS.Timeout | null = null;
@@ -284,9 +296,10 @@ async function runInteractiveClient() {
                         left: 2,
                         height: 1,
                         width: '80%',
-                        inputOnFocus: false, // Start with false
+                        //inputOnFocus: false, // Start with false
                         censor: false, // Ensure text is not hidden
                         mouse: true, // Enable mouse interaction
+                        keys: true, // Enable keyboard input for navigation (arrow keys)
                         style: {
                             fg: 'white',
                             bg: 'blue',
@@ -371,10 +384,12 @@ async function runInteractiveClient() {
                             const nextIndex = (index + 1) % formFocusableElements.length;
                             formFocusableElements[nextIndex].focus();
                         }
+                        screen.render(); // Re-render after focus change
                         return false; // Prevent default tab behavior
                     } else if (key.name === 'enter') {
                         const nextIndex = (index + 1) % formFocusableElements.length;
                         formFocusableElements[nextIndex].focus();
+                        screen.render(); // Re-render after focus change
                         return false; // Prevent default enter behavior
                     }
                 });
@@ -393,6 +408,7 @@ async function runInteractiveClient() {
                         const nextIndex = (currentIndex + 1) % formFocusableElements.length;
                         formFocusableElements[nextIndex].focus();
                     }
+                    screen.render(); // Re-render after focus change
                     return false; // Prevent default tab behavior
                 }
             });
@@ -409,6 +425,7 @@ async function runInteractiveClient() {
                         // From save button, go back to toolList
                         toolList.focus();
                     }
+                    screen.render(); // Re-render after focus change
                     return false; // Prevent default tab behavior
                 }
             });
@@ -456,8 +473,7 @@ async function runInteractiveClient() {
                     });
                     resultsBox.setContent(resultsBox.getContent() + `Tool Result:\n${JSON.stringify(toolResult, null, 2)}\n`);
                 } catch (error) {
-                    const errorMessage = (error as Error).message;
-                    console.error(`Tool execution error: ${errorMessage}`);
+                    const errorMessage = (error as Error).message;                    
                     resultsBox.setContent(resultsBox.getContent() + `Tool execution error: ${errorMessage}\n`);
                     // Check if the error is connection-related
                     if (errorMessage.includes('fetch failed') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ECONNREFUSED')) {
