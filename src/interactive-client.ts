@@ -116,23 +116,59 @@ async function runInteractiveClient() {
             bg: "gray",
             fg: "black",
         },
+    });
+
+    const statusMessage = blessed.text({
+        parent: statusLine,
+        left: 0,
         content: "Connecting...",
+        style: {
+            bg: "gray",
+            fg: "black",
+        },
+    });
+
+    const closeButton = blessed.button({
+        parent: statusLine,
+        right: 0,
+        width: 10,
+        height: 1,
+        content: ' Exit (Esc) ',
+        align: 'center',
+        valign: 'middle',
+        mouse: true,
+        keys: true,
+        style: {
+            fg: 'white',
+            bg: 'red',
+            focus: {
+                bg: 'darkred',
+            },
+        },
+    });
+
+    closeButton.on('press', () => {
+        process.exit(0);
     });
 
     // Quit on Ctrl+C.
     screen.program.key(["C-c"], function (ch: string, key: any) {
         return process.exit(0);
     });
+    //closeButton.focus(); // Set initial focus to the close button
     screen.program.key(["C-x"], function (ch: string, key: any) {
         return process.exit(0);
     });
 
-    screen.key(['escape'], function(ch: string, key: any) {
+    screen.key(['escape'], function (ch: string, key: any) {
         // If an input is focused, cancel it
         if (screen.focused && (screen.focused as any).cancel) {
             (screen.focused as any).cancel();
             screen.focused.emit('blur'); // Manually emit blur to trigger blur logic
             screen.render();
+        } else {
+            // If no input is focused, exit the application
+            process.exit(0);
         }
     });
 
@@ -149,7 +185,7 @@ async function runInteractiveClient() {
 
     const connectAndPopulateTools = async () => {
         try {
-            statusLine.setContent("Connecting to MCP proxy server...");
+            statusMessage.setContent("Connecting to MCP proxy server...");
             screen.render();
 
             transport = new SSEClientTransport(new URL("http://localhost:3006/sse"));
@@ -171,7 +207,7 @@ async function runInteractiveClient() {
                 clearInterval(reconnectInterval);
                 reconnectInterval = null;
             }
-            statusLine.setContent("Connected to MCP proxy server.");
+            statusMessage.setContent("Connected to MCP proxy server.");
             screen.render();
 
             // Reset toolList styles and interaction options upon successful connection
@@ -196,7 +232,7 @@ async function runInteractiveClient() {
             }
         } catch (error) {
             isConnected = false;
-            statusLine.setContent(`Connection error: ${(error as Error).message}. Retrying in 5 seconds...`);
+            statusMessage.setContent(`Connection error: ${(error as Error).message}. Retrying in 5 seconds...`);
             toolList.setItems([`Connection Error`]);
             toolList.style.fg = "red"; // Set foreground color to red for error message
             toolList.style.selected.bg = "red"; // Set selected background color to red
@@ -370,7 +406,7 @@ async function runInteractiveClient() {
             });
 
             // Collect all focusable elements in the form
-            formFocusableElements = [...currentToolInputs, executeButton, saveButton]; // Assign to the outer-scoped variable
+            formFocusableElements = [...currentToolInputs, executeButton, saveButton, closeButton]; // Assign to the outer-scoped variable
 
             currentToolInputs.forEach((input, index) => {
                 input.on('keypress', (ch: string, key: any) => {
@@ -477,7 +513,7 @@ async function runInteractiveClient() {
                     });
                     resultsBox.setContent(resultsBox.getContent() + `Tool Result:\n${JSON.stringify(toolResult, null, 2)}\n`);
                 } catch (error) {
-                    const errorMessage = (error as Error).message;                    
+                    const errorMessage = (error as Error).message;
                     resultsBox.setContent(resultsBox.getContent() + `Tool execution error: ${errorMessage}\n`);
                     // Check if the error is connection-related
                     if (errorMessage.includes('fetch failed') || errorMessage.includes('Failed to fetch') || errorMessage.includes('ECONNREFUSED')) {
@@ -494,9 +530,9 @@ async function runInteractiveClient() {
                 const filePath = 'mcp_results.txt';
                 try {
                     fs.writeFileSync(filePath, resultsContent);
-                    statusLine.setContent(`Results saved to ${filePath}`);
+                    statusMessage.setContent(`Results saved to ${filePath}`);
                 } catch (error) {
-                    statusLine.setContent(`Error saving results: ${(error as Error).message}`);
+                    statusMessage.setContent(`Error saving results: ${(error as Error).message}`);
                 }
                 screen.render();
             });
