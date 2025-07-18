@@ -111,7 +111,7 @@ export const createServer = async () => {
         },
         CompatibilityCallToolResultSchema
       );
-      //console.log('Tool call result:', JSON.stringify(toolResult, null, 2));
+      console.log('Tool call result:', JSON.stringify(toolResult, null, 2));
       return toolResult;
     } catch (error) {
       console.error(`Error calling tool through ${clientForTool.name}:`, error);
