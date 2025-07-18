@@ -32,7 +32,7 @@ async function runInteractiveClient() {
     // Create a box for the left sidebar (tools list)
     const toolList = blessed.list({
         parent: screen,
-        width: "30%",
+        width: 30,
         height: "100%",
         left: 0,
         top: 0,
@@ -78,9 +78,9 @@ async function runInteractiveClient() {
     // Create a box for the right panel (tool details, parameters)
     const detailsPanel = blessed.box({
         parent: screen,
-        width: "70%",
-        height: "70%", // Adjusted height
-        left: "30%",
+        width: "100%-30",
+        height: "50%", // Adjusted height
+        left: 30,
         top: 0,
         border: "line",
         label: " Details ",
@@ -97,10 +97,10 @@ async function runInteractiveClient() {
     // Create a box for the results
     const resultsBox = blessed.box({
         parent: screen,
-        width: "70%",
-        height: "30%", // Remaining height
-        left: "30%",
-        top: "70%", // Positioned below detailsPanel
+        width: "100%-30",
+        height: "50%", // Remaining height
+        left: 30,
+        top: "50%", // Positioned below detailsPanel
         border: "line",
         label: " Results ",
         scrollable: true,
