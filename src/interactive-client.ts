@@ -377,8 +377,12 @@ async function runInteractiveClient() {
                     if (key.name === 'tab') {
                         if (key.shift) {
                             // Shift+Tab (backwards)
-                            const prevIndex = (index - 1 + formFocusableElements.length) % formFocusableElements.length;
-                            formFocusableElements[prevIndex].focus();
+                            if (index === 0) { // If it's the first input element
+                                toolList.focus(); // Focus the toolList
+                            } else {
+                                const prevIndex = (index - 1 + formFocusableElements.length) % formFocusableElements.length;
+                                formFocusableElements[prevIndex].focus();
+                            }
                         } else {
                             // Tab (forwards)
                             const nextIndex = (index + 1) % formFocusableElements.length;
