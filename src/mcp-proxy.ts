@@ -1,5 +1,5 @@
 import { FastMCP, UserError } from "fastmcp";
-import { z } from "zod";
+import { z, ZodTypeAny } from "zod";
 import {
   ListToolsResultSchema,
   ListPromptsResultSchema,
@@ -64,7 +64,7 @@ export const createServer = async () => {
           server.addTool({
             name: tool.name,
             description: `[${connectedClient.name}] ${tool.description || ''}`,
-            parameters: z.object({}).passthrough(), // Placeholder: dynamically generate schema from tool.inputSchema if needed
+            parameters: tool.inputSchema ? createZodSchemaFromInputSchema(tool.inputSchema) : z.object({}).passthrough(),
             execute: async (args, context) => {
               console.log('Forwarding tool call:', tool.name);
               console.log('Tool call arguments:', JSON.stringify(args, null, 2));
@@ -253,3 +253,30 @@ export const createServer = async () => {
 
   return { server, cleanup };
 };
+
+// Helper function to convert a simplified JSON schema to a Zod schema
+function createZodSchemaFromInputSchema(inputSchema: any): z.ZodObject<any> {
+  const schemaProperties: { [key: string]: ZodTypeAny } = {};
+  if (inputSchema.properties) {
+    for (const propName in inputSchema.properties) {
+      const prop = inputSchema.properties[propName];
+      switch (prop.type) {
+        case 'string':
+          schemaProperties[propName] = z.string();
+          break;
+        case 'number':
+          schemaProperties[propName] = z.number();
+          break;
+        case 'boolean':
+          schemaProperties[propName] = z.boolean();
+          break;
+        // Add more types as needed (e.g., 'array', 'object')
+        default:
+          // Fallback for unknown types or complex schemas
+          schemaProperties[propName] = z.any();
+          break;
+      }
+    }
+  }
+  return z.object(schemaProperties).passthrough();
+}
