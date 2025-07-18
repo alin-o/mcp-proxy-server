@@ -150,10 +150,21 @@ async function runInteractiveClient() {
             let formFocusableElements: blessed.Widgets.BlessedElement[] = []; // Declare outside the select handler
             let currentFormBox: blessed.Widgets.BoxElement | null = null; // Keep track of the current form box
             const toolInputValues = new Map<string, { [key: string]: any }>(); // Store input values for each tool
+            let lastSelectedToolName: string | null = null; // To store the name of the tool that was last selected
+            let currentInputBoxes: { [key: string]: blessed.Widgets.TextboxElement } = {}; // Store input boxes for the currently displayed tool
 
             toolList.on('select', async (item: blessed.Widgets.ListElement, index: number) => {
                 const selectedToolName = item.content;
                 const selectedTool = toolMap.get(selectedToolName);
+
+                // Save current input values before destroying the form
+                if (lastSelectedToolName && Object.keys(currentInputBoxes).length > 0) {
+                    const previousToolInputValues: { [key: string]: any } = {};
+                    for (const propName in currentInputBoxes) {
+                        previousToolInputValues[propName] = currentInputBoxes[propName].value;
+                    }
+                    toolInputValues.set(lastSelectedToolName, previousToolInputValues);
+                }
 
                 if (selectedTool) {
                     if (currentFormBox) {
@@ -181,7 +192,7 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                     currentFormBox = formBox; // Store the new form box
 
                     let currentTop = 4; // Starting position for parameters, adjusted for new header
-                    const inputBoxes: { [key: string]: blessed.Widgets.TextboxElement } = {};
+                    currentInputBoxes = {}; // Reset for the new tool
                     const currentToolInputs: blessed.Widgets.TextboxElement[] = [];
 
                     if (selectedTool.inputSchema && selectedTool.inputSchema.properties) {
@@ -220,7 +231,7 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                             input.on('focus', () => {
                                 input.readInput(); // Explicitly start reading input
                             });
-                            inputBoxes[propName] = input;
+                            currentInputBoxes[propName] = input;
                             currentToolInputs.push(input); // Add to current tool's inputs
 
                             // Set previous value if available
@@ -336,8 +347,8 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                     executeButton.removeAllListeners('press');
                     executeButton.on('press', async () => {
                         const params: { [key: string]: any } = {};
-                        for (const propName in inputBoxes) {
-                            const input = inputBoxes[propName];
+                        for (const propName in currentInputBoxes) {
+                            const input = currentInputBoxes[propName];
                             const propSchema = selectedTool.inputSchema.properties[propName];
                             let value: any = input.value;
 
@@ -396,6 +407,7 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
 
                     screen.render();
                 }
+                lastSelectedToolName = selectedToolName; // Update last selected tool name
             });
 
             // Global Key Listener (for toolList and general navigation if needed)
