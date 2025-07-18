@@ -149,6 +149,7 @@ async function runInteractiveClient() {
             // Store all focusable elements for tab navigation
             let formFocusableElements: blessed.Widgets.BlessedElement[] = []; // Declare outside the select handler
             let currentFormBox: blessed.Widgets.BoxElement | null = null; // Keep track of the current form box
+            const toolInputValues = new Map<string, { [key: string]: any }>(); // Store input values for each tool
 
             toolList.on('select', async (item: blessed.Widgets.ListElement, index: number) => {
                 const selectedToolName = item.content;
@@ -307,10 +308,6 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                                 formFocusableElements[nextIndex].focus();
                             }
                             return false; // Prevent default tab behavior
-                        } else if (key.name === 'enter') {
-                            // Pressing enter on the button should trigger its press event
-                            executeButton.emit('press');
-                            return false;
                         }
                     });
 
@@ -327,10 +324,6 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                                 toolList.focus();
                             }
                             return false; // Prevent default tab behavior
-                        } else if (key.name === 'enter') {
-                            // Pressing enter on the button should trigger its press event
-                            saveButton.emit('press');
-                            return false;
                         }
                     });
 
