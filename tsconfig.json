@@ -10,9 +10,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "src/browser-client"
   ],
   "exclude": [
     "node_modules"

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Browser Client</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        #app {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: auto;
+        }
+        h1 {
+            color: #0056b3;
+        }
+        .tool-list, .details-panel, .results-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .tool-list ul {
+            list-style: none;
+            padding: 0;
+        }
+        .tool-list li {
+            padding: 8px 0;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .tool-list li:last-child {
+            border-bottom: none;
+        }
+        .tool-list li.selected {
+            background-color: #e0e0e0;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status-message {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>MCP Browser Client</h1>
+        <div class="status-message" id="statusMessage">Connecting...</div>
+        <div style="display: flex;">
+            <div class="tool-list" style="flex: 1;">
+                <h2>Tools</h2>
+                <ul id="toolList"></ul>
+            </div>
+            <div style="flex: 2; margin-left: 20px;">
+                <div class="details-panel">
+                    <h2>Details</h2>
+                    <div id="detailsContent">Select a tool to see details.</div>
+                    <div id="toolForm"></div>
+                    <button id="executeButton">Execute</button>
+                    <button id="saveButton">Save Results</button>
+                </div>
+            </div>
+        </div>
+        <div class="results-box" style="margin-top: 20px;">
+            <h2>Results</h2>
+            <pre id="resultsContent"></pre>
+        </div>
+    </div>
+    <script type="module" src="./browser-client.bundle.js"></script>
+</body>
+</html>
