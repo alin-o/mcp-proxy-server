@@ -223,6 +223,12 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                             inputBoxes[propName] = input;
                             currentToolInputs.push(input); // Add to current tool's inputs
 
+                            // Set previous value if available
+                            const savedValues = toolInputValues.get(selectedToolName);
+                            if (savedValues && savedValues[propName] !== undefined) {
+                                input.setValue(String(savedValues[propName]));
+                            }
+
                             currentTop += 2; // Move down for the next parameter
                         }
                     }
@@ -356,6 +362,9 @@ Description: ${selectedTool.description || 'No description provided.'}`, // Init
                             }
                             params[propName] = value;
                         }
+
+                        // Save current input values
+                        toolInputValues.set(selectedToolName, params);
 
                         resultsBox.setContent(`Executing tool: ${selectedTool.name}\nParameters: ${JSON.stringify(params, null, 2)}\n`);
                         screen.render();
