@@ -9,19 +9,31 @@
  * - Summarizing all notes via a prompt
  */
 
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createServer } from "./mcp-proxy.js";
 
 async function main() {
-  const transport = new StdioServerTransport();
   const { server, cleanup } = await createServer();
 
-  await server.connect(transport);
+  server.start({
+    transportType: "stdio",
+  }).then(() => {
+    console.log(`FastMCP server is running with stdio transport`);
+  }).catch((error) => {
+    console.error("Failed to start FastMCP server:", error);
+    process.exit(1); // Exit if server fails to start
+  });
 
   // Cleanup on exit
   process.on("SIGINT", async () => {
+    console.log('SIGINT signal received: closing FastMCP server and cleaning up clients');
     await cleanup();
-    await server.close();
+    // FastMCP server handles its own closing when transport is closed
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    console.log('SIGTERM signal received: closing FastMCP server and cleaning up clients');
+    await cleanup();
     process.exit(0);
   });
 }

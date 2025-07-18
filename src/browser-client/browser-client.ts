@@ -14,6 +14,7 @@ let client: Client;
 let toolMap = new Map<string, any>(); // Store full tool objects
 let lastSelectedToolName: string | null = null;
 const toolInputValues = new Map<string, { [key: string]: any }>(); // Store input values for each tool
+const clientId = `browser-client-${Math.random().toString(36).substring(2, 15)}`; // Generate a unique client ID
 
 const updateStatus = (message: string) => {
     statusMessage.textContent = message;
@@ -24,11 +25,12 @@ const connectAndPopulateTools = async () => {
     try {
         updateStatus("Connecting to MCP proxy server...");
 
-        transport = new SSEClientTransport(new URL("http://localhost:3006/sse"));
+        transport = new SSEClientTransport(new URL(`http://localhost:3006/sse?node_id=${clientId}`));
         client = new Client(
             {
                 name: "browser-client",
                 version: "1.0.0",
+                id: clientId, // Use the generated client ID as node.id
             },
             {
                 capabilities: {
@@ -40,8 +42,8 @@ const connectAndPopulateTools = async () => {
         await client.connect(transport);
         updateStatus("Connected to MCP proxy server.");
 
-        transport.onerror = (event: Event) => {
-            console.error("SSE Transport error:", event);
+        transport.onerror = (error: Error) => {
+            console.error("SSE Transport error:", error);
             updateStatus(`Connection lost.`);
         };
 
